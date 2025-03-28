@@ -1,0 +1,30 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="200" fill="#4F46E5"/>
+  
+  <!-- Background elements (circuit-like patterns) -->
+  <path d="M200 300 L400 300 L400 350 L500 350 L500 200" stroke="#8B87FF" stroke-width="10" fill="none"/>
+  <path d="M600 300 L800 300 L800 600 L750 600 L750 700" stroke="#8B87FF" stroke-width="10" fill="none"/>
+  <path d="M300 600 L200 600 L200 800 L400 800 L400 700" stroke="#8B87FF" stroke-width="10" fill="none"/>
+  <path d="M600 800 L800 800 L800 700" stroke="#8B87FF" stroke-width="10" fill="none"/>
+  
+  <!-- Microphone base -->
+  <rect x="432" y="312" width="160" height="320" rx="80" fill="#FFFFFF"/>
+  
+  <!-- Microphone stand -->
+  <rect x="492" y="632" width="40" height="120" fill="#FFFFFF"/>
+  
+  <!-- Microphone base stand -->
+  <rect x="392" y="752" width="240" height="40" rx="20" fill="#FFFFFF"/>
+  
+  <!-- Sound waves -->
+  <path d="M332 462 Q312 462, 312 492 Q312 522, 332 522" stroke="#FFCC00" stroke-width="12" fill="none"/>
+  <path d="M292 442 Q262 442, 262 492 Q262 542, 292 542" stroke="#FFCC00" stroke-width="12" fill="none"/>
+  <path d="M252 422 Q212 422, 212 492 Q212 562, 252 562" stroke="#FFCC00" stroke-width="12" fill="none"/>
+  
+  <path d="M692 462 Q712 462, 712 492 Q712 522, 692 522" stroke="#FFCC00" stroke-width="12" fill="none"/>
+  <path d="M732 442 Q762 442, 762 492 Q762 542, 732 542" stroke="#FFCC00" stroke-width="12" fill="none"/>
+  <path d="M772 422 Q812 422, 812 492 Q812 562, 772 562" stroke="#FFCC00" stroke-width="12" fill="none"/>
+  
+  <!-- AI text -->
+  <text x="462" y="250" font-family="Arial" font-weight="bold" font-size="80" fill="#FFFFFF">AI</text>
+</svg> 
