@@ -10,7 +10,13 @@ import 'package:get/get.dart';
 /// View for recording audio and generating summaries
 class RecordingView extends GetView<RecordingController> {
   /// Constructor for RecordingView
-  const RecordingView({super.key});
+  RecordingView({super.key}) {
+    // Initialize the title controller with a default value
+    _titleController.text = 'Meeting ${DateTime.now().toString().substring(0, 16)}';
+  }
+
+  // Create a TextEditingController for the title input
+  final TextEditingController _titleController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -53,27 +59,27 @@ class RecordingView extends GetView<RecordingController> {
               return _buildErrorState(response.message ?? AppStrings.errorGeneric);
             }
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Title input field
-                _buildTitleInput(),
-                SizedBox(height: 32.h),
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Title input field
+                  _buildTitleInput(),
+                  SizedBox(height: 32.h),
 
-                // Recording visualization
-                _buildRecordingVisualizer(),
-                SizedBox(height: 32.h),
+                  // Recording visualization
+                  _buildRecordingVisualizer(),
+                  SizedBox(height: 32.h),
 
-                // Status message
-                if (controller.statusMessage.isNotEmpty) _buildStatusMessage(),
+                  // Status message
+                  if (controller.statusMessage.isNotEmpty) _buildStatusMessage(),
 
-                // Flexible spacer
-                const Spacer(),
-
-                // Bottom control buttons
-                _buildControlButtons(),
-                SizedBox(height: 16.h),
-              ],
+                  // Bottom control buttons
+                  SizedBox(height: 32.h),
+                  _buildControlButtons(),
+                  SizedBox(height: 16.h),
+                ],
+              ),
             );
           }),
         ),
@@ -84,6 +90,7 @@ class RecordingView extends GetView<RecordingController> {
   // Build the title input field
   Widget _buildTitleInput() {
     return TextField(
+      controller: _titleController,
       decoration: InputDecoration(
         labelText: 'Session Title',
         hintText: 'E.g., Team Meeting, Lecture, Interview...',
@@ -162,6 +169,24 @@ class RecordingView extends GetView<RecordingController> {
               color: AppColors.recording,
             ),
           ),
+          SizedBox(height: 10.h),
+          // Recording duration timer
+          Obx(() => Text(
+                controller.formattedDuration,
+                style: TextStyle(
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Get.isDarkMode ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                ),
+              )),
+          SizedBox(height: 8.h),
+          Text(
+            'Listening to audio...',
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+            ),
+          ),
         ],
       ),
     );
@@ -220,6 +245,29 @@ class RecordingView extends GetView<RecordingController> {
               color: Get.isDarkMode ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
             ),
           ),
+          SizedBox(height: 10.h),
+          // Add more detailed progress text
+          Obx(() {
+            String progressText = '';
+            final status = controller.statusMessage;
+
+            if (status == AppStrings.processingAudio) {
+              progressText = 'Converting audio to digital format...';
+            } else if (status == AppStrings.transcribing) {
+              progressText = 'Converting speech to text...';
+            } else if (status == AppStrings.summarizing) {
+              progressText = 'Analyzing text and extracting key points...';
+            }
+
+            return Text(
+              progressText,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+              ),
+              textAlign: TextAlign.center,
+            );
+          }),
         ],
       ),
     );
@@ -361,11 +409,10 @@ class RecordingView extends GetView<RecordingController> {
         return ElevatedButton.icon(
           onPressed: () {
             debugPrint('DEBUG: User tapped start recording button');
-            // Get the title from the text field
-            final title = 'Meeting ${DateTime.now().toString().substring(0, 16)}';
-            if (title.isNotEmpty) {
-              controller.startRecording(title);
-            }
+            final title = _titleController.text.isNotEmpty
+                ? _titleController.text
+                : 'Meeting ${DateTime.now().toString().substring(0, 16)}';
+            controller.startRecording(title);
           },
           icon: const Icon(Icons.mic),
           label: const Text(AppStrings.startRecording),

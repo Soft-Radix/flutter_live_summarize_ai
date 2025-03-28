@@ -1,163 +1,202 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_live_summarize_ai/core/constants/app_colors.dart';
 import 'package:flutter_live_summarize_ai/core/constants/app_strings.dart';
-import 'package:flutter_live_summarize_ai/data/models/summary_model.dart';
-import 'package:flutter_live_summarize_ai/data/repositories/summary_repository.dart';
+import 'package:flutter_live_summarize_ai/presentation/controllers/summary_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 /// View for displaying a generated summary
-class SummaryView extends StatefulWidget {
+class SummaryView extends GetView<SummaryController> {
   /// Constructor for SummaryView
   const SummaryView({super.key});
-
-  @override
-  State<SummaryView> createState() => _SummaryViewState();
-}
-
-class _SummaryViewState extends State<SummaryView> {
-  final SummaryRepository _repository = Get.find<SummaryRepository>();
-  SummaryModel? _summary;
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSummary();
-  }
-
-  /// Load the summary from the repository using the ID from the route
-  Future<void> _loadSummary() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Get the summary ID from the route
-      final summaryId = Get.parameters['id'];
-      if (summaryId == null) {
-        throw Exception('Summary ID not provided');
-      }
-
-      // Load the summary
-      final summary = await _repository.getSummaryById(summaryId);
-      if (summary == null) {
-        throw Exception('Summary not found');
-      }
-
-      setState(() {
-        _summary = summary;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  /// Copy the summary to clipboard
-  void _copySummaryToClipboard() {
-    if (_summary == null) return;
-
-    final text = _summary!.keyPoints.map((point) => '• $point').join('\n');
-    Clipboard.setData(ClipboardData(text: text));
-
-    Get.snackbar(
-      'Copied!',
-      AppStrings.summaryCopied,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 2),
-    );
-  }
-
-  /// Share the summary
-  void _shareSummary() {
-    // In a real app, this would use a share plugin
-    // For now, we'll just copy to clipboard
-    _copySummaryToClipboard();
-
-    Get.snackbar(
-      'Share',
-      'Sharing functionality will be implemented here',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 2),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_summary?.title ?? AppStrings.summary),
+        title: Obx(() => Text(controller.summary?.title ?? AppStrings.summary)),
         actions: [
-          if (_summary != null)
-            IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: _shareSummary,
-              tooltip: AppStrings.shareSummary,
-            ),
+          Obx(() {
+            if (controller.summary != null) {
+              return Row(
+                children: [
+                  // Edit title button
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => _showEditTitleDialog(context),
+                    tooltip: 'Edit Title',
+                  ),
+                  // Delete summary button
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () => _showDeleteConfirmationDialog(context),
+                    tooltip: 'Delete Summary',
+                  ),
+                  // Share button
+                  IconButton(
+                    icon: const Icon(Icons.share),
+                    onPressed: controller.shareSummary,
+                    tooltip: AppStrings.shareSummary,
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
         ],
       ),
       body: _buildBody(),
     );
   }
 
+  /// Show dialog to edit the summary title
+  Future<void> _showEditTitleDialog(BuildContext context) async {
+    final TextEditingController titleController = TextEditingController(
+      text: controller.summary?.title ?? '',
+    );
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Title'),
+          content: TextField(
+            controller: titleController,
+            decoration: const InputDecoration(
+              hintText: 'Enter new title',
+              labelText: 'Title',
+            ),
+            autofocus: true,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Save'),
+              onPressed: () async {
+                if (titleController.text.trim().isNotEmpty) {
+                  final success = await controller.updateTitle(titleController.text.trim());
+                  if (success) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                } else {
+                  Get.snackbar(
+                    'Error',
+                    'Title cannot be empty',
+                    snackPosition: SnackPosition.BOTTOM,
+                    duration: const Duration(seconds: 2),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Show dialog to confirm summary deletion
+  Future<void> _showDeleteConfirmationDialog(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Summary'),
+          content: const Text(
+            'Are you sure you want to delete this summary? This action cannot be undone.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+              onPressed: () async {
+                final success = await controller.deleteSummary();
+                Navigator.of(dialogContext).pop();
+                if (success) {
+                  Get.back(); // Return to previous screen
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Build the body based on the current state
   Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return Obx(() {
+      if (controller.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-    if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.r),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64.r,
-                color: AppColors.error,
+      if (controller.hasError) {
+        return _buildErrorState();
+      }
+
+      return _buildSummaryContent();
+    });
+  }
+
+  /// Build the error state
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.r),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64.r,
+              color: AppColors.error,
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'Error Loading Summary',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
               ),
-              SizedBox(height: 16.h),
-              Text(
-                'Error Loading Summary',
-                style: TextStyle(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.bold,
-                ),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              controller.errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
               ),
-              SizedBox(height: 8.h),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  color:
-                      Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                ),
-              ),
-              SizedBox(height: 24.h),
-              ElevatedButton(
-                onPressed: () => Get.back(),
-                child: const Text('Go Back'),
-              ),
-            ],
-          ),
+            ),
+            SizedBox(height: 24.h),
+            ElevatedButton(
+              onPressed: () => Get.back(),
+              child: const Text('Go Back'),
+            ),
+          ],
         ),
-      );
-    }
-
-    return _buildSummaryContent();
+      ),
+    );
   }
 
   /// Build the summary content
   Widget _buildSummaryContent() {
+    final summary = controller.summary!;
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.r),
       child: Column(
@@ -171,30 +210,62 @@ class _SummaryViewState extends State<SummaryView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _summary!.title,
-                          style: TextStyle(
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.bold,
+                  // Title section with edit option
+                  InkWell(
+                    onTap: () => _showEditTitleDialog(Get.context!),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  summary.title,
+                                  style: TextStyle(
+                                    fontSize: 20.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.edit,
+                                size: 16.r,
+                                color: Get.isDarkMode
+                                    ? AppColors.textSecondaryDark
+                                    : AppColors.textSecondaryLight,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      Text(
-                        '${_summary!.formattedDate}\n${_summary!.formattedTime}',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          color: Get.isDarkMode
-                              ? AppColors.textSecondaryDark
-                              : AppColors.textSecondaryLight,
+                        Text(
+                          '${summary.formattedDate}\n${summary.formattedTime}',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: Get.isDarkMode
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+
+                  // Add audio player if audio is available
+                  Obx(() {
+                    if (controller.isAudioAvailable) {
+                      return Column(
+                        children: [
+                          SizedBox(height: 16.h),
+                          const Divider(),
+                          SizedBox(height: 8.h),
+                          _buildAudioPlayer(),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
                 ],
               ),
             ),
@@ -210,11 +281,41 @@ class _SummaryViewState extends State<SummaryView> {
           ),
           SizedBox(height: 8.h),
 
+          // Regenerate button
+          Padding(
+            padding: EdgeInsets.only(bottom: 12.r),
+            child: Obx(() {
+              return ElevatedButton.icon(
+                onPressed:
+                    controller.isRegenerating ? null : () => controller.regenerateSummaryPoints(),
+                icon: controller.isRegenerating
+                    ? SizedBox(
+                        width: 16.r,
+                        height: 16.r,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.r,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Get.theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.auto_awesome, size: 16.r),
+                label: Text(controller.isRegenerating ? 'Regenerating...' : 'Generate AI Summary'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
+                  foregroundColor: Get.theme.colorScheme.onPrimary,
+                  textStyle: TextStyle(fontSize: 14.sp),
+                  padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 8.r),
+                ),
+              );
+            }),
+          ),
+
           // List of key points
-          if (_summary!.hasKeyPoints) ..._buildKeyPoints() else _buildEmptySummary(),
+          if (summary.hasKeyPoints) ..._buildKeyPoints() else _buildEmptySummary(),
 
           // Transcription (if available)
-          if (_summary!.transcription != null && _summary!.transcription!.isNotEmpty)
+          if (summary.transcription != null && summary.transcription!.isNotEmpty)
             _buildTranscription(),
 
           // Bottom spacing
@@ -224,9 +325,90 @@ class _SummaryViewState extends State<SummaryView> {
     );
   }
 
+  /// Build the audio player widget
+  Widget _buildAudioPlayer() {
+    return Column(
+      children: [
+        // Play/Pause button and time
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Play/Pause button
+            Obx(() {
+              return IconButton(
+                onPressed: controller.toggleAudioPlayback,
+                icon: Icon(
+                  controller.isPlayingAudio ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                  size: 42.r,
+                  color: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
+                ),
+              );
+            }),
+
+            // Time display
+            Obx(() {
+              return Text(
+                '${controller.audioPosition} / ${controller.audioDuration}',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color:
+                      Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                ),
+              );
+            }),
+          ],
+        ),
+
+        // Seek bar
+        Obx(() {
+          return SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 4.r,
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6.r),
+              overlayShape: RoundSliderOverlayShape(overlayRadius: 14.r),
+              activeTrackColor: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
+              inactiveTrackColor: (Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight)
+                  .withOpacity(0.3),
+              thumbColor: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
+            ),
+            child: Slider(
+              value: controller.audioProgress,
+              onChanged: controller.seekAudio,
+              min: 0.0,
+              max: 1.0,
+            ),
+          );
+        }),
+
+        // Label
+        Padding(
+          padding: EdgeInsets.only(left: 8.r, bottom: 8.r),
+          child: Row(
+            children: [
+              Icon(
+                Icons.mic,
+                size: 16.r,
+                color: Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+              ),
+              SizedBox(width: 4.w),
+              Text(
+                'Original Recording',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color:
+                      Get.isDarkMode ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Build the list of key points
   List<Widget> _buildKeyPoints() {
-    return _summary!.keyPoints.map((point) {
+    return controller.summary!.keyPoints.map((point) {
       return Padding(
         padding: EdgeInsets.only(bottom: 12.r),
         child: Row(
@@ -298,7 +480,7 @@ class _SummaryViewState extends State<SummaryView> {
           child: Padding(
             padding: EdgeInsets.all(16.r),
             child: Text(
-              _summary!.transcription!,
+              controller.summary!.transcription!,
               style: TextStyle(
                 fontSize: 14.sp,
                 height: 1.5,

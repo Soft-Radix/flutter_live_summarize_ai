@@ -41,11 +41,11 @@ class AppPages {
     ),
     GetPage(
       name: Routes.RECORDING,
-      page: () => const RecordingView(),
+      page: () => RecordingView(),
       transition: Transition.downToUp,
     ),
     GetPage(
-      name: Routes.SUMMARY,
+      name: '${Routes.SUMMARY}/:id',
       page: () => const SummaryView(),
       transition: Transition.rightToLeft,
     ),
