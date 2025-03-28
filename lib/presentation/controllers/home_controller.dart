@@ -9,6 +9,9 @@ class HomeController extends GetxController {
   final RxList<SummaryModel> _recentSummaries = <SummaryModel>[].obs;
   final RxBool _isLoading = false.obs;
 
+  // For bottom navigation bar
+  final RxInt selectedIndex = 0.obs;
+
   /// Constructor for HomeController
   HomeController({
     required SummaryRepository summaryRepository,
@@ -39,6 +42,13 @@ class HomeController extends GetxController {
   /// Navigate to the settings page
   void goToSettings() {
     Get.toNamed(Routes.SETTINGS);
+  }
+
+  /// Change the bottom navigation tab
+  void changeTabIndex(int index) {
+    selectedIndex.value = index;
+    // We no longer navigate to different pages since we're using IndexedStack
+    // Just update the index and let the UI handle showing the right tab
   }
 
   /// Load recent summaries from the repository
