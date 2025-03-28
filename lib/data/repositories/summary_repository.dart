@@ -23,11 +23,16 @@ class SummaryRepository {
   /// Returns the created summary model
   Future<ApiResponse<SummaryModel>> createRecordingSession(String title) async {
     try {
+      debugPrint('DEBUG: Creating recording session with title: $title');
+
       // Generate a unique ID for the summary
       final id = DateTime.now().millisecondsSinceEpoch.toString();
+      debugPrint('DEBUG: Generated session ID: $id');
 
       // Start recording audio
+      debugPrint('DEBUG: Starting audio recording through AudioProvider');
       final audioPath = await _audioProvider.startRecording();
+      debugPrint('DEBUG: Audio recording started at path: $audioPath');
 
       // Create a summary model with recording status
       final summary = SummaryModel.recording(
@@ -37,9 +42,11 @@ class SummaryRepository {
         audioFilePath: audioPath,
       );
 
+      debugPrint('DEBUG: Created summary model with status: ${summary.status}');
+
       return ApiResponse.completed(summary);
     } catch (e) {
-      debugPrint('Error creating recording session: $e');
+      debugPrint('DEBUG ERROR: Error creating recording session: $e');
       return ApiResponse.error(
         e is AppException ? e.message : 'Failed to create recording session',
         e is Exception ? e : null,
@@ -51,8 +58,12 @@ class SummaryRepository {
   /// Returns the updated summary model
   Future<ApiResponse<SummaryModel>> stopRecordingSession(SummaryModel summary) async {
     try {
+      debugPrint('DEBUG: Stopping recording session for summary ID: ${summary.id}');
+
       // Stop recording audio
+      debugPrint('DEBUG: Stopping audio recording through AudioProvider');
       final audioPath = await _audioProvider.stopRecording();
+      debugPrint('DEBUG: Audio recording stopped, path: $audioPath');
 
       // Update the summary model with the audio path and processing status
       final updatedSummary = summary.copyWith(
@@ -60,9 +71,11 @@ class SummaryRepository {
         status: SummaryStatus.processing,
       );
 
+      debugPrint('DEBUG: Updated summary status to: ${updatedSummary.status}');
+
       return ApiResponse.completed(updatedSummary);
     } catch (e) {
-      debugPrint('Error stopping recording session: $e');
+      debugPrint('DEBUG ERROR: Error stopping recording session: $e');
       return ApiResponse.error(
         e is AppException ? e.message : 'Failed to stop recording session',
         e is Exception ? e : null,

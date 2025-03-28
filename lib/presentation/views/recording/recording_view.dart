@@ -312,61 +312,69 @@ class RecordingView extends GetView<RecordingController> {
 
   // Build the control buttons
   Widget _buildControlButtons() {
-    final summary = controller.summaryResponse.data;
+    return Obx(() {
+      final isRecording = controller.isRecording;
+      final status = controller.summaryResponse.data?.status;
 
-    // Show the view summary button if processing is complete
-    if (summary != null && summary.status == SummaryStatus.completed) {
-      return ElevatedButton(
-        onPressed: () {
-          Get.offAndToNamed('${Routes.SUMMARY}/${summary.id}');
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
-          padding: EdgeInsets.symmetric(vertical: 16.r),
-        ),
-        child: const Text('View Summary'),
-      );
-    }
-
-    // Show stop button if recording
-    if (controller.isRecording) {
-      return ElevatedButton(
-        onPressed: () {
-          controller.stopRecording();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.error,
-          padding: EdgeInsets.symmetric(vertical: 16.r),
-        ),
-        child: const Text(AppStrings.stopRecording),
-      );
-    }
-
-    // Show start button if not recording and not in processing state
-    if (!controller.isRecording &&
-        summary?.status != SummaryStatus.processing &&
-        summary?.status != SummaryStatus.generating) {
-      return ElevatedButton(
-        onPressed: () {
-          final title = DateTime.now().toString(); // Default title
-          controller.startRecording(title);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
-          padding: EdgeInsets.symmetric(vertical: 16.r),
-        ),
-        child: const Text(AppStrings.startRecording),
-      );
-    }
-
-    // Show disabled button when processing
-    return ElevatedButton(
-      onPressed: null,
-      style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(vertical: 16.r),
-      ),
-      child: const Text(AppStrings.processingAudio),
-    );
+      if (isRecording) {
+        // Recording in progress - show stop button
+        return ElevatedButton.icon(
+          onPressed: () {
+            debugPrint('DEBUG: User tapped stop recording button');
+            controller.stopRecording();
+          },
+          icon: const Icon(Icons.stop),
+          label: const Text(AppStrings.stopRecording),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.recording,
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+          ),
+        );
+      } else if (status == SummaryStatus.completed) {
+        // Recording completed - show view summary button
+        return ElevatedButton.icon(
+          onPressed: () {
+            debugPrint('DEBUG: User tapped view summary button');
+            final summaryId = controller.currentSummary?.id;
+            if (summaryId != null) {
+              Get.toNamed('${Routes.SUMMARY}/$summaryId');
+            }
+          },
+          icon: const Icon(Icons.visibility),
+          label: const Text('View Summary'),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+          ),
+        );
+      } else if (status == SummaryStatus.processing || status == SummaryStatus.generating) {
+        // Processing in progress - show disabled button
+        return ElevatedButton.icon(
+          onPressed: null, // Disabled button
+          icon: const Icon(Icons.hourglass_top),
+          label: const Text(AppStrings.processingAudio),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+          ),
+        );
+      } else {
+        // Ready to record - show start button
+        return ElevatedButton.icon(
+          onPressed: () {
+            debugPrint('DEBUG: User tapped start recording button');
+            // Get the title from the text field
+            final title = 'Meeting ${DateTime.now().toString().substring(0, 16)}';
+            if (title.isNotEmpty) {
+              controller.startRecording(title);
+            }
+          },
+          icon: const Icon(Icons.mic),
+          label: const Text(AppStrings.startRecording),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+          ),
+        );
+      }
+    });
   }
 
   // Show a confirmation dialog when trying to exit during recording

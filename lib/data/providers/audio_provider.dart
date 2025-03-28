@@ -25,19 +25,25 @@ class AudioProvider {
       // Check for microphone permission
       final hasPermission = await PermissionHelper.checkAndRequestMicrophonePermission();
       if (!hasPermission) {
+        debugPrint('DEBUG: Microphone permission denied');
         throw const PermissionException(
           message: 'Microphone permission denied',
         );
       }
+
+      debugPrint('DEBUG: Microphone permission granted, proceeding with recording');
 
       // Get the directory for storing audio files
       final appDir = await getApplicationDocumentsDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       final path = '${appDir.path}/recording_$timestamp.m4a';
 
+      debugPrint('DEBUG: Recording path: $path');
+
       // Configure the audio recorder
+      debugPrint('DEBUG: Configuring and starting audio recorder');
       await _audioRecorder.start(
-        RecordConfig(
+        const RecordConfig(
           encoder: AudioEncoder.aacLc,
           bitRate: 128000,
           sampleRate: 44100,
@@ -45,11 +51,13 @@ class AudioProvider {
         path: path,
       );
 
+      debugPrint('DEBUG: Audio recorder started successfully');
+
       _currentPath = path;
       _isRecording = true;
       return path;
     } catch (e) {
-      debugPrint('Error starting recording: $e');
+      debugPrint('DEBUG ERROR: Error starting recording: $e');
       throw RecordingException(
         message: 'Failed to start recording',
         details: e,
@@ -61,13 +69,18 @@ class AudioProvider {
   /// Returns the path of the recorded audio file
   Future<String?> stopRecording() async {
     try {
-      if (!_isRecording) return _currentPath;
+      if (!_isRecording) {
+        debugPrint('DEBUG: Not recording, cannot stop');
+        return _currentPath;
+      }
 
+      debugPrint('DEBUG: Stopping audio recorder');
       await _audioRecorder.stop();
+      debugPrint('DEBUG: Audio recorder stopped successfully, path: $_currentPath');
       _isRecording = false;
       return _currentPath;
     } catch (e) {
-      debugPrint('Error stopping recording: $e');
+      debugPrint('DEBUG ERROR: Error stopping recording: $e');
       throw RecordingException(
         message: 'Failed to stop recording',
         details: e,
