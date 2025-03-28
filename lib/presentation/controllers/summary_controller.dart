@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_live_summarize_ai/core/constants/app_strings.dart';
 import 'package:flutter_live_summarize_ai/data/models/summary_model.dart';
 import 'package:flutter_live_summarize_ai/data/providers/audio_player_provider.dart';
+import 'package:flutter_live_summarize_ai/data/providers/speech_to_text_provider.dart';
 import 'package:flutter_live_summarize_ai/data/repositories/summary_repository.dart';
 import 'package:flutter_live_summarize_ai/data/services/gemini_service.dart';
 import 'package:get/get.dart';
@@ -24,6 +25,8 @@ class SummaryController extends GetxController {
   final RxString _audioDuration = "00:00".obs;
   final RxBool _isEditingTitle = false.obs;
   final RxBool _isRegenerating = false.obs;
+  final RxString _currentTranscription = ''.obs;
+  final RxBool _isTranscribing = false.obs;
 
   /// Constructor
   SummaryController({
@@ -66,6 +69,12 @@ class SummaryController extends GetxController {
 
   /// Whether the title is being edited
   bool get isEditingTitle => _isEditingTitle.value;
+
+  /// Get the current transcription being generated
+  String get currentTranscription => _currentTranscription.value;
+
+  /// Whether transcription is in progress
+  bool get isTranscribing => _isTranscribing.value;
 
   @override
   void onInit() {
@@ -420,6 +429,132 @@ class SummaryController extends GetxController {
       Get.snackbar(
         'Error',
         'Failed to regenerate summary points',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 2),
+      );
+      _isRegenerating.value = false;
+      return false;
+    }
+  }
+
+  /// Regenerate the summary from the audio recording
+  Future<bool> regenerateFromAudio() async {
+    if (_summary.value == null) {
+      debugPrint('DEBUG: SummaryController - Cannot regenerate, summary is null');
+      return false;
+    }
+
+    if (_summary.value!.audioFilePath == null || _summary.value!.audioFilePath!.isEmpty) {
+      debugPrint('DEBUG: SummaryController - Cannot regenerate, no audio file available');
+      Get.snackbar(
+        'Error',
+        'No audio recording available to regenerate summary',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 2),
+      );
+      return false;
+    }
+
+    try {
+      _isRegenerating.value = true;
+      _isTranscribing.value = true;
+      _currentTranscription.value = 'Starting transcription...';
+
+      debugPrint(
+          'DEBUG: SummaryController - Regenerating summary from audio file: ${_summary.value!.audioFilePath}');
+
+      // Get the speech-to-text provider from GetX
+      final speechToTextProvider = Get.find<SpeechToTextProvider>();
+
+      // Transcribe the audio
+      _currentTranscription.value = 'Converting audio to text...';
+
+      // In a real implementation, you would use the speech API's streaming functionality
+      // Here we're using our mock implementation that returns a complete string
+      final transcription =
+          await speechToTextProvider.convertAudioToText(_summary.value!.audioFilePath!);
+
+      // Check if transcription failed
+      if (transcription.startsWith('Error:')) {
+        debugPrint('DEBUG ERROR: Transcription failed: $transcription');
+        _isTranscribing.value = false;
+        _currentTranscription.value = '';
+        Get.snackbar(
+          'Error',
+          'Failed to transcribe audio: ${transcription.substring(7)}',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        _isRegenerating.value = false;
+        return false;
+      }
+
+      // Update the current transcription for display
+      _currentTranscription.value = transcription;
+      _isTranscribing.value = false;
+
+      // Use Gemini AI to generate new key points from the transcription
+      final newKeyPoints = await _geminiService.generateSummaryFromTranscription(
+        transcription,
+        _summary.value!.title,
+      );
+
+      if (newKeyPoints.isEmpty) {
+        debugPrint('DEBUG ERROR: SummaryController - Generated key points are empty');
+        _currentTranscription.value = '';
+        Get.snackbar(
+          'Error',
+          'Failed to generate new summary points',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        _isRegenerating.value = false;
+        return false;
+      }
+
+      debugPrint('DEBUG: SummaryController - Generated ${newKeyPoints.length} new key points');
+
+      // Update the summary with new transcription and key points
+      final updatedSummary = _summary.value!.copyWith(
+        transcription: transcription,
+        keyPoints: newKeyPoints,
+      );
+
+      // Save the updated summary
+      final success = await _repository.saveSummary(updatedSummary);
+
+      if (success) {
+        debugPrint('DEBUG: SummaryController - Summary regenerated successfully from audio');
+        _summary.value = updatedSummary;
+        _currentTranscription.value = '';
+
+        Get.snackbar(
+          'Success',
+          'Summary regenerated from audio recording',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        _isRegenerating.value = false;
+        return true;
+      } else {
+        debugPrint('DEBUG ERROR: SummaryController - Failed to save regenerated summary');
+        _currentTranscription.value = '';
+        Get.snackbar(
+          'Error',
+          'Failed to save regenerated summary',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        _isRegenerating.value = false;
+        return false;
+      }
+    } catch (e) {
+      debugPrint('DEBUG ERROR: SummaryController - Error regenerating summary from audio: $e');
+      _isTranscribing.value = false;
+      _currentTranscription.value = '';
+      Get.snackbar(
+        'Error',
+        'Failed to regenerate summary from audio',
         snackPosition: SnackPosition.BOTTOM,
         duration: const Duration(seconds: 2),
       );

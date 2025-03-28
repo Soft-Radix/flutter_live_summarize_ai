@@ -1,5 +1,6 @@
 import 'package:flutter_live_summarize_ai/data/providers/audio_player_provider.dart';
 import 'package:flutter_live_summarize_ai/data/providers/audio_provider.dart';
+import 'package:flutter_live_summarize_ai/data/providers/speech_to_text_provider.dart';
 import 'package:flutter_live_summarize_ai/data/repositories/summary_repository.dart';
 import 'package:flutter_live_summarize_ai/data/services/gemini_service.dart';
 import 'package:flutter_live_summarize_ai/presentation/controllers/history_controller.dart';
@@ -21,6 +22,11 @@ class AppBinding extends Bindings {
 
     Get.lazyPut<AudioPlayerProvider>(
       () => AudioPlayerProvider(),
+      fenix: true,
+    );
+
+    Get.lazyPut<SpeechToTextProvider>(
+      () => SpeechToTextProvider(),
       fenix: true,
     );
 
@@ -48,6 +54,7 @@ class AppBinding extends Bindings {
       () => RecordingController(
         summaryRepository: Get.find<SummaryRepository>(),
         geminiService: Get.find<GeminiService>(),
+        speechToTextProvider: Get.find<SpeechToTextProvider>(),
       ),
       fenix: true,
     );

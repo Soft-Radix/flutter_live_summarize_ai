@@ -36,6 +36,7 @@ class AppStrings {
   // Error Messages
   static const String errorMicPermission = "Microphone permission is required";
   static const String errorRecording = "Error recording audio";
+  static const String errorProcessing = "Error processing recording";
   static const String errorTranscription = "Error transcribing audio";
   static const String errorSummarization = "Error summarizing text";
   static const String errorNetwork = "Network error. Please check your connection";

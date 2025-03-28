@@ -281,38 +281,149 @@ class SummaryView extends GetView<SummaryController> {
           ),
           SizedBox(height: 8.h),
 
-          // Regenerate button
+          // Regenerate buttons
           Padding(
             padding: EdgeInsets.only(bottom: 12.r),
-            child: Obx(() {
-              return ElevatedButton.icon(
-                onPressed:
-                    controller.isRegenerating ? null : () => controller.regenerateSummaryPoints(),
-                icon: controller.isRegenerating
-                    ? SizedBox(
-                        width: 16.r,
-                        height: 16.r,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.r,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Get.theme.colorScheme.onPrimary,
-                          ),
-                        ),
-                      )
-                    : Icon(Icons.auto_awesome, size: 16.r),
-                label: Text(controller.isRegenerating ? 'Regenerating...' : 'Generate AI Summary'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
-                  foregroundColor: Get.theme.colorScheme.onPrimary,
-                  textStyle: TextStyle(fontSize: 14.sp),
-                  padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 8.r),
+            child: Row(
+              children: [
+                // Regenerate from text
+                Expanded(
+                  child: Obx(() {
+                    return ElevatedButton.icon(
+                      onPressed: controller.isRegenerating
+                          ? null
+                          : () => controller.regenerateSummaryPoints(),
+                      icon: controller.isRegenerating
+                          ? SizedBox(
+                              width: 16.r,
+                              height: 16.r,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.r,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Get.theme.colorScheme.onPrimary,
+                                ),
+                              ),
+                            )
+                          : Icon(Icons.auto_awesome, size: 16.r),
+                      label: Text(
+                          controller.isRegenerating ? 'Regenerating...' : 'Generate from Text'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Get.isDarkMode ? AppColors.primaryDark : AppColors.primaryLight,
+                        foregroundColor: Get.theme.colorScheme.onPrimary,
+                        textStyle: TextStyle(fontSize: 14.sp),
+                        padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.r),
+                      ),
+                    );
+                  }),
                 ),
-              );
-            }),
+
+                SizedBox(width: 8.w),
+
+                // Regenerate from audio
+                Expanded(
+                  child: Obx(() {
+                    return ElevatedButton.icon(
+                      onPressed: (controller.isRegenerating || !controller.isAudioAvailable)
+                          ? null
+                          : () => controller.regenerateFromAudio(),
+                      icon: controller.isRegenerating
+                          ? SizedBox(
+                              width: 16.r,
+                              height: 16.r,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.r,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Get.theme.colorScheme.onPrimary,
+                                ),
+                              ),
+                            )
+                          : Icon(Icons.mic, size: 16.r),
+                      label:
+                          Text(controller.isRegenerating ? 'Processing...' : 'Generate from Audio'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Get.isDarkMode ? Colors.blueGrey : Colors.blue,
+                        foregroundColor: Get.theme.colorScheme.onPrimary,
+                        textStyle: TextStyle(fontSize: 14.sp),
+                        padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.r),
+                        disabledBackgroundColor: Get.isDarkMode
+                            ? Colors.blueGrey.withOpacity(0.3)
+                            : Colors.blue.withOpacity(0.3),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
           ),
 
           // List of key points
           if (summary.hasKeyPoints) ..._buildKeyPoints() else _buildEmptySummary(),
+
+          // Live transcription (when regenerating from audio)
+          Obx(() {
+            if (controller.isTranscribing ||
+                (controller.isRegenerating && controller.currentTranscription.isNotEmpty)) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 16.h),
+                  const Divider(),
+                  SizedBox(height: 16.h),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.mic,
+                        size: 24.r,
+                        color: Get.isDarkMode ? Colors.blueGrey : Colors.blue,
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          controller.isTranscribing
+                              ? 'Live Transcription'
+                              : 'Generated Transcription',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Get.isDarkMode ? Colors.blueGrey : Colors.blue,
+                          ),
+                        ),
+                      ),
+                      if (controller.isTranscribing)
+                        SizedBox(
+                          width: 20.r,
+                          height: 20.r,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.r,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Get.isDarkMode ? Colors.blueGrey : Colors.blue,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 8.h),
+                  Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.r),
+                      child: Text(
+                        controller.currentTranscription,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          height: 1.5,
+                          color: Get.isDarkMode
+                              ? AppColors.textPrimaryDark
+                              : AppColors.textPrimaryLight,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
 
           // Transcription (if available)
           if (summary.transcription != null && summary.transcription!.isNotEmpty)
